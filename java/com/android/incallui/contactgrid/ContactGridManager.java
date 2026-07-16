@@ -20,12 +20,14 @@ package com.android.incallui.contactgrid;
 import android.content.Context;
 import android.graphics.drawable.Animatable;
 import android.graphics.drawable.Drawable;
+import android.net.Uri;
 import android.os.SystemClock;
 import android.telephony.PhoneNumberUtils;
 import android.text.BidiFormatter;
 import android.text.TextDirectionHeuristics;
 import android.text.TextUtils;
 import android.view.View;
+import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityEvent;
 import android.widget.Chronometer;
 import android.widget.ImageView;
@@ -45,6 +47,7 @@ import com.android.dialer.widget.BidiTextView;
 import com.android.incallui.incall.protocol.ContactPhotoType;
 import com.android.incallui.incall.protocol.PrimaryCallState;
 import com.android.incallui.incall.protocol.PrimaryInfo;
+import com.android.dialer.callingcard.CallingCardManager;
 
 import java.util.List;
 
@@ -218,6 +221,14 @@ public class ContactGridManager {
       return false;
     }
 
+    // Hide the small avatar bubble if a fullscreen Calling Card exists
+    if (primaryInfo != null && primaryInfo.number() != null) {
+      if (com.android.dialer.callingcard.CallingCardManager.getCardUri(context, primaryInfo.number()) != null) {
+        avatarImageView.setVisibility(View.GONE);
+        return false;
+      }
+    }
+
     boolean hasPhoto =
         (primaryInfo.photo() != null || primaryInfo.photoUri() != null)
             && primaryInfo.photoType() == ContactPhotoType.CONTACT;
@@ -296,6 +307,51 @@ public class ContactGridManager {
         nameDirection = View.TEXT_DIRECTION_LTR;
       }
       contactNameTextView.setTextDirection(nameDirection);
+    }
+
+    if (primaryInfo.number() != null) {
+      String cardUriString = CallingCardManager.getCardUri(context, primaryInfo.number());
+
+      View current = contactGridLayout;
+      current.setBackgroundResource(0); // Clear grid background
+
+      while (current.getParent() != null && current.getParent() instanceof ViewGroup) {
+          ViewGroup parent = (ViewGroup) current.getParent();
+          if (parent.getId() == android.R.id.content) {
+              break;
+          }
+          current = parent;
+          current.setBackgroundResource(0);
+      }
+
+      ViewGroup fragmentRoot = (ViewGroup) current;
+      ImageView bgView = fragmentRoot.findViewWithTag("CALLING_CARD_BG");
+
+      if (cardUriString != null) {
+        if (bgView == null) {
+          bgView = new ImageView(context);
+          bgView.setTag("CALLING_CARD_BG");
+          bgView.setLayoutParams(new ViewGroup.LayoutParams(
+              ViewGroup.LayoutParams.MATCH_PARENT, 
+              ViewGroup.LayoutParams.MATCH_PARENT));
+          bgView.setScaleType(ImageView.ScaleType.CENTER_CROP);
+          fragmentRoot.addView(bgView, 0); 
+        }
+        bgView.setImageURI(Uri.parse(cardUriString));
+        bgView.setVisibility(View.VISIBLE);
+
+        for (int i = 0; i < fragmentRoot.getChildCount(); i++) {
+            View child = fragmentRoot.getChildAt(i);
+            if (child instanceof ImageView && child != bgView) {
+                if (child.getLayoutParams() != null && 
+                    child.getLayoutParams().height == ViewGroup.LayoutParams.MATCH_PARENT) {
+                    child.setVisibility(View.GONE);
+                }
+            }
+        }
+      } else if (bgView != null) {
+        bgView.setVisibility(View.GONE);
+      }
     }
 
     if (avatarImageView != null) {

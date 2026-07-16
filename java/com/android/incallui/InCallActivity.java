@@ -267,6 +267,11 @@ public class InCallActivity extends TransactionSafeFragmentActivity
     }
 
     getWindow().addFlags(flags);
+
+    if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O_MR1) {
+        setShowWhenLocked(true);
+        setTurnScreenOn(true);
+    }
   }
 
   private static int getAudioRoute() {
@@ -867,6 +872,15 @@ public class InCallActivity extends TransactionSafeFragmentActivity
   }
 
   public void updateWindowBackgroundColor(@FloatRange(from = -1f, to = 1.0f) float progress) {
+    com.android.incallui.call.DialerCall call = com.android.incallui.call.CallList.getInstance().getFirstCall();
+    if (call != null && call.getNumber() != null) {
+      if (com.android.dialer.callingcard.CallingCardManager.getCardUri(this, call.getNumber()) != null) {
+        // Force transparency, aborting the gradient draw
+        getWindow().setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(android.graphics.Color.TRANSPARENT));
+        return;
+      }
+    }
+
     ThemeColorManager themeColorManager = InCallPresenter.getInstance().getThemeColorManager();
     @ColorInt int top;
     @ColorInt int middle;
@@ -1242,6 +1256,9 @@ public class InCallActivity extends TransactionSafeFragmentActivity
       transaction.commitNow();
       Trace.endSection();
     }
+
+    applyCallingCard();
+
     isInShowMainInCallFragment = false;
     Trace.endSection();
   }
@@ -1547,6 +1564,53 @@ public class InCallActivity extends TransactionSafeFragmentActivity
   @Override
   public RttCallScreenDelegate newRttCallScreenDelegate(RttCallScreen videoCallScreen) {
     return new RttCallPresenter();
+  }
+
+  private void applyCallingCard() {
+    com.android.incallui.call.DialerCall call = com.android.incallui.call.CallList.getInstance().getFirstCall();
+    if (call == null) return;
+
+    String cardUri = com.android.dialer.callingcard.CallingCardManager.getCardUri(this, call.getNumber());
+    android.view.ViewGroup mainFrame = findViewById(R.id.main);
+    if (mainFrame == null) return;
+
+    android.widget.ImageView bgView = mainFrame.findViewWithTag("CALLING_CARD_BG");
+
+    if (cardUri != null) {
+      if (bgView == null) {
+        bgView = new android.widget.ImageView(this);
+        bgView.setTag("CALLING_CARD_BG");
+        bgView.setLayoutParams(new android.view.ViewGroup.LayoutParams(
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT,
+            android.view.ViewGroup.LayoutParams.MATCH_PARENT));
+        bgView.setScaleType(android.widget.ImageView.ScaleType.CENTER_CROP);
+        mainFrame.addView(bgView, 0); // Insert at the absolute bottom layer
+      }
+      bgView.setImageURI(android.net.Uri.parse(cardUri));
+      bgView.setVisibility(View.VISIBLE);
+
+      // Strip all immediate fragment backgrounds
+      mainFrame.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+      for (int i = 0; i < mainFrame.getChildCount(); i++) {
+        View child = mainFrame.getChildAt(i);
+        if (child != bgView) {
+          child.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+        }
+      }
+
+      // Explicitly target the opaque sibling containers in AnswerFragment
+      View incomingContainer = findViewById(R.id.incoming_container);
+      if (incomingContainer != null) {
+        incomingContainer.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+      }
+      View contactGrid = findViewById(R.id.contactgrid_contact_name);
+      if (contactGrid != null && contactGrid.getParent() instanceof View) {
+        ((View) contactGrid.getParent()).setBackgroundColor(android.graphics.Color.TRANSPARENT);
+      }
+
+    } else if (bgView != null) {
+      bgView.setVisibility(View.GONE);
+    }
   }
 
   private static class ShouldShowUiResult {

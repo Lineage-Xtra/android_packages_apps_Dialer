@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: 2026 The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <EditText
+        android:id="@+id/et_phone_number"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:hint="Phone Number"
+        android:inputType="phone"
+        android:importantForAutofill="no" />
+
+    <Button
+        android:id="@+id/btn_pick_image"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Select Background Image"
+        android:layout_marginTop="16dp"/>
+
+    <ImageView
+        android:id="@+id/iv_preview"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:layout_marginTop="16dp"
+        android:scaleType="centerCrop"
+        android:background="#EEEEEE"
+        android:importantForAccessibility="no" />
+
+    <Button
+        android:id="@+id/btn_save_card"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Save Calling Card"
+        android:layout_marginTop="16dp"/>
+
+</LinearLayout>

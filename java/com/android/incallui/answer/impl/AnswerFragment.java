@@ -574,7 +574,17 @@ public class AnswerFragment extends Fragment
   }
 
   private boolean shouldShowAvatar() {
-    return !isVideoCall() && !isVideoUpgradeRequest();
+    if (isVideoCall() || isVideoUpgradeRequest()) {
+      return false;
+    }
+
+    // Hide the small avatar bubble if a fullscreen Calling Card exists
+    if (primaryInfo != null && primaryInfo.number() != null) {
+      if (com.android.dialer.callingcard.CallingCardManager.getCardUri(getContext(), primaryInfo.number()) != null) {
+        return false;
+      }
+    }
+    return true;
   }
 
   @Override

@@ -759,6 +759,17 @@
         <activity
             android:name="com.android.voicemail.impl.configui.VoicemailSecretCodeActivity"
             android:exported="false" />
+
+        <activity
+            android:name="com.android.dialer.callingcard.CallingCardEditorActivity"
+            android:label="Calling Card Editor"
+            android:theme="@style/Dialer.ThemeBase"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.android.dialer.action.SET_CALLING_CARD" />
+                <category android:name="android.intent.category.DEFAULT" />
+            </intent-filter>
+        </activity>
     </application>
 
 </manifest>
