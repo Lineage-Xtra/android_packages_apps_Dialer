@@ -91,7 +91,9 @@
         android:layout_height="wrap_content"
         android:layout_alignTop="@+id/incall_pager"
         android:layout_alignParentBottom="true"
+        android:layout_marginBottom="-100dp" 
         android:background="@drawable/incall_bottom_panel_bg"
+        android:theme="@android:style/Theme.DeviceDefault.DayNight" 
         android:elevation="1dp" />
 
     <com.android.dialer.widget.LockableViewPager
@@ -130,7 +132,6 @@
         android:layout_alignParentBottom="true"
         android:clipChildren="false"
         android:clipToPadding="false"
-        android:fitsSystemWindows="true"
         android:elevation="5dp"
         tools:visibility="gone"/>
   </RelativeLayout>
