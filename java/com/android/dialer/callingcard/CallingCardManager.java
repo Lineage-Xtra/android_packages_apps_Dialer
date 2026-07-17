@@ -61,4 +61,52 @@ public class CallingCardManager {
         db.close();
         return uri;
     }
+
+    public static void deleteCard(Context context, String number) {
+        if (number == null) return;
+
+        CallingCardDatabaseHelper dbHelper = new CallingCardDatabaseHelper(context);
+        SQLiteDatabase db = dbHelper.getWritableDatabase();
+
+        // Find the exact number key and URI to delete the physical file
+        Cursor cursor = db.query(CallingCardDatabaseHelper.TABLE_NAME,
+                new String[]{CallingCardDatabaseHelper.COLUMN_NUMBER, CallingCardDatabaseHelper.COLUMN_IMAGE_URI},
+                null, null, null, null, null);
+
+        String exactDbKey = null;
+        String uriString = null;
+
+        if (cursor != null) {
+            while (cursor.moveToNext()) {
+                String dbNumber = cursor.getString(0);
+                if (PhoneNumberUtils.compare(number, dbNumber)) {
+                    exactDbKey = dbNumber;
+                    uriString = cursor.getString(1);
+                    break;
+                }
+            }
+            cursor.close();
+        }
+
+        // Delete the physical image file
+        if (uriString != null) {
+            try {
+                android.net.Uri uri = android.net.Uri.parse(uriString);
+                java.io.File file = new java.io.File(uri.getPath());
+                if (file.exists()) {
+                    file.delete();
+                }
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        // Delete the database record
+        if (exactDbKey != null) {
+            db.delete(CallingCardDatabaseHelper.TABLE_NAME,
+                    CallingCardDatabaseHelper.COLUMN_NUMBER + " = ?",
+                    new String[]{exactDbKey});
+        }
+        db.close();
+    }
 }

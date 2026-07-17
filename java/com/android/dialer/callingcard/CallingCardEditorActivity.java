@@ -25,6 +25,7 @@ public class CallingCardEditorActivity extends Activity {
 
     private static final int PICK_IMAGE_REQUEST = 1001;
     public static final String EXTRA_PHONE_NUMBER = "EXTRA_PHONE_NUMBER";
+    public static final String EXTRA_DELETE_CARD = "EXTRA_DELETE_CARD";
 
     private EditText etPhoneNumber;
     private ImageView ivPreview;
@@ -43,6 +44,14 @@ public class CallingCardEditorActivity extends Activity {
         if (getIntent() != null && getIntent().hasExtra(EXTRA_PHONE_NUMBER)) {
             String passedNumber = getIntent().getStringExtra(EXTRA_PHONE_NUMBER);
             if (passedNumber != null && !passedNumber.trim().isEmpty()) {
+
+                if (getIntent().getBooleanExtra(EXTRA_DELETE_CARD, false)) {
+                    CallingCardManager.deleteCard(this, passedNumber.trim());
+                    Toast.makeText(this, "Calling Card deleted", Toast.LENGTH_SHORT).show();
+                    finish();
+                    return;
+                }
+
                 etPhoneNumber.setText(passedNumber.trim());
                 etPhoneNumber.setEnabled(false);
 
