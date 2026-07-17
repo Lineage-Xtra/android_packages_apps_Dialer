@@ -26,14 +26,14 @@
       android:layout_width="match_parent"
       android:layout_height="match_parent"
       android:clipChildren="false"
-      android:clipToPadding="false"
-      android:fitsSystemWindows="true">
+      android:clipToPadding="false">
 
     <LinearLayout
         android:id="@id/incall_contact_grid"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_marginTop="12dp"
+        android:fitsSystemWindows="true"
         android:gravity="center_horizontal"
         android:orientation="vertical">
 
@@ -84,13 +84,23 @@
           android:layout_height="wrap_content"/>
     </LinearLayout>
 
+    <!-- This empty view acts purely as the background. It anchors to the top 
+         of the pager and stretches to the absolute bottom of the screen. -->
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignTop="@+id/incall_pager"
+        android:layout_alignParentBottom="true"
+        android:background="@drawable/incall_bottom_panel_bg"
+        android:elevation="1dp" />
+
     <com.android.dialer.widget.LockableViewPager
         android:id="@+id/incall_pager"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"
+        android:layout_height="250dp"
         android:layout_above="@+id/incall_paginator"
-        android:layout_below="@+id/incall_contact_grid"
-        android:layout_centerHorizontal="true"/>
+        android:layout_centerHorizontal="true"
+        android:elevation="2dp" />
 
     <com.android.incallui.incall.impl.InCallPaginator
         android:id="@+id/incall_paginator"
@@ -98,8 +108,20 @@
         android:layout_height="@dimen/paginator_height"
         android:layout_above="@+id/incall_end_call"
         android:layout_centerHorizontal="true"
+        android:elevation="2dp"
         android:visibility="gone"/>
 
+    <ImageButton
+        android:id="@+id/incall_end_call"
+        style="@style/Incall.Button.End"
+        android:layout_alignParentBottom="true"
+        android:layout_centerHorizontal="true"
+        android:layout_marginTop="16dp"
+        android:layout_marginBottom="48dp"
+        android:elevation="2dp"
+        android:contentDescription="@string/incall_content_description_end_call"/>
+
+    <!-- Dialpad Container -->
     <FrameLayout
         android:id="@+id/incall_dialpad_container"
         style="@style/DialpadContainer"
@@ -108,16 +130,9 @@
         android:layout_alignParentBottom="true"
         android:clipChildren="false"
         android:clipToPadding="false"
-        tools:background="@android:color/white"
+        android:fitsSystemWindows="true"
+        android:elevation="5dp"
         tools:visibility="gone"/>
-    <ImageButton
-        android:id="@+id/incall_end_call"
-        style="@style/Incall.Button.End"
-        android:layout_marginTop="36dp"
-        android:layout_marginBottom="36dp"
-        android:layout_alignParentBottom="true"
-        android:layout_centerHorizontal="true"
-        android:contentDescription="@string/incall_content_description_end_call"/>
   </RelativeLayout>
 
   <FrameLayout
