@@ -13,6 +13,7 @@ import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.android.dialer.R;
@@ -26,9 +27,11 @@ public class CallingCardEditorActivity extends Activity {
     private static final int PICK_IMAGE_REQUEST = 1001;
     public static final String EXTRA_PHONE_NUMBER = "EXTRA_PHONE_NUMBER";
     public static final String EXTRA_DELETE_CARD = "EXTRA_DELETE_CARD";
+    public static final String EXTRA_VIEW_ONLY = "EXTRA_VIEW_ONLY";
 
     private EditText etPhoneNumber;
     private ImageView ivPreview;
+    private TextView tvEmptyHint;
     private Uri selectedImageUri = null;
 
     @Override
@@ -38,8 +41,15 @@ public class CallingCardEditorActivity extends Activity {
 
         etPhoneNumber = findViewById(R.id.et_phone_number);
         ivPreview = findViewById(R.id.iv_preview);
+        tvEmptyHint = findViewById(R.id.tv_empty_hint);
+
         Button btnPickImage = findViewById(R.id.btn_pick_image);
         Button btnSave = findViewById(R.id.btn_save_card);
+        View imageContainer = findViewById(R.id.image_container);
+        View actionButtons = findViewById(R.id.action_buttons_container);
+        TextView tvTitle = findViewById(R.id.tv_title);
+
+        boolean isViewOnly = getIntent() != null && getIntent().getBooleanExtra(EXTRA_VIEW_ONLY, false);
 
         if (getIntent() != null && getIntent().hasExtra(EXTRA_PHONE_NUMBER)) {
             String passedNumber = getIntent().getStringExtra(EXTRA_PHONE_NUMBER);
@@ -59,40 +69,57 @@ public class CallingCardEditorActivity extends Activity {
                 if (existingUriString != null) {
                     selectedImageUri = Uri.parse(existingUriString);
                     ivPreview.setImageURI(selectedImageUri);
+                    tvEmptyHint.setVisibility(View.GONE);
+                } else if (isViewOnly) {
+                    // If clicked "View" but no image exists, toast and exit immediately
+                    Toast.makeText(this, "No calling card set for this contact", Toast.LENGTH_SHORT).show();
+                    finish();
+                    return;
                 }
             }
         }
 
-        btnPickImage.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-                intent.addCategory(Intent.CATEGORY_OPENABLE);
-                intent.setType("image/*");
-                startActivityForResult(intent, PICK_IMAGE_REQUEST);
+        if (isViewOnly) {
+            tvTitle.setVisibility(View.GONE);
+            etPhoneNumber.setVisibility(View.GONE);
+            actionButtons.setVisibility(View.GONE);
+
+            // Remove padding so the image goes edge-to-edge
+            findViewById(android.R.id.content).setPadding(0, 0, 0, 0);
+
+            // Allow tapping the image to close the viewer
+            ivPreview.setOnClickListener(v -> finish());
+            return;
+        }
+
+        View.OnClickListener pickImageListener = v -> {
+            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
+            intent.addCategory(Intent.CATEGORY_OPENABLE);
+            intent.setType("image/*");
+            startActivityForResult(intent, PICK_IMAGE_REQUEST);
+        };
+
+        // Allow tapping both the button OR the image frame to pick an image
+        btnPickImage.setOnClickListener(pickImageListener);
+        imageContainer.setOnClickListener(pickImageListener);
+
+        btnSave.setOnClickListener(v -> {
+            String number = etPhoneNumber.getText().toString().trim();
+            if (number.isEmpty() || selectedImageUri == null) {
+                Toast.makeText(CallingCardEditorActivity.this,
+                    "Please select a background image first",
+                    Toast.LENGTH_SHORT).show();
+                return;
             }
-        });
 
-        btnSave.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                String number = etPhoneNumber.getText().toString().trim();
-                if (number.isEmpty() || selectedImageUri == null) {
-                    Toast.makeText(CallingCardEditorActivity.this,
-                        "Please ensure a phone number and background image are specified",
-                        Toast.LENGTH_SHORT).show();
-                    return;
-                }
+            String savedLocalPath = copyImageToInternalStorage(selectedImageUri, number);
 
-                String savedLocalPath = copyImageToInternalStorage(selectedImageUri, number);
-
-                if (savedLocalPath != null) {
-                    CallingCardManager.saveCard(CallingCardEditorActivity.this, number, savedLocalPath);
-                    Toast.makeText(CallingCardEditorActivity.this, "Calling Card Updated Successfully!", Toast.LENGTH_SHORT).show();
-                    finish();
-                } else {
-                    Toast.makeText(CallingCardEditorActivity.this, "Failed to save image.", Toast.LENGTH_SHORT).show();
-                }
+            if (savedLocalPath != null) {
+                CallingCardManager.saveCard(CallingCardEditorActivity.this, number, savedLocalPath);
+                Toast.makeText(CallingCardEditorActivity.this, "Calling Card Saved!", Toast.LENGTH_SHORT).show();
+                finish();
+            } else {
+                Toast.makeText(CallingCardEditorActivity.this, "Failed to save image.", Toast.LENGTH_SHORT).show();
             }
         });
     }
@@ -104,6 +131,7 @@ public class CallingCardEditorActivity extends Activity {
             selectedImageUri = data.getData();
             if (selectedImageUri != null) {
                 ivPreview.setImageURI(selectedImageUri);
+                tvEmptyHint.setVisibility(View.GONE);
             }
         }
     }

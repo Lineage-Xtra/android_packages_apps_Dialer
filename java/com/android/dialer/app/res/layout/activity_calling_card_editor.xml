@@ -7,38 +7,79 @@
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    android:padding="16dp">
+    android:background="?android:attr/colorBackground"
+    android:padding="24dp">
+
+    <TextView
+        android:id="@+id/tv_title"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Set Calling Card"
+        android:textSize="24sp"
+        android:textStyle="bold"
+        android:layout_marginBottom="8dp"
+        android:textColor="?android:attr/textColorPrimary"/>
 
     <EditText
         android:id="@+id/et_phone_number"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:hint="Phone Number"
-        android:inputType="phone"
+        android:background="@null"
+        android:textSize="16sp"
+        android:textColor="?android:attr/textColorSecondary"
+        android:layout_marginBottom="24dp"
         android:importantForAutofill="no" />
 
-    <Button
-        android:id="@+id/btn_pick_image"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:text="Select Background Image"
-        android:layout_marginTop="16dp"/>
-
-    <ImageView
-        android:id="@+id/iv_preview"
+    <FrameLayout
+        android:id="@+id/image_container"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:layout_marginTop="16dp"
-        android:scaleType="centerCrop"
-        android:background="#EEEEEE"
-        android:importantForAccessibility="no" />
+        android:layout_marginBottom="24dp"
+        android:background="#1A888888"
+        android:elevation="2dp">
 
-    <Button
-        android:id="@+id/btn_save_card"
+        <ImageView
+            android:id="@+id/iv_preview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:importantForAccessibility="no" />
+
+        <TextView
+            android:id="@+id/tv_empty_hint"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center"
+            android:text="Tap to select background"
+            android:textColor="?android:attr/textColorSecondary"
+            android:textSize="16sp" />
+    </FrameLayout>
+
+    <LinearLayout
+        android:id="@+id/action_buttons_container"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:text="Save Calling Card"
-        android:layout_marginTop="16dp"/>
+        android:orientation="horizontal"
+        android:weightSum="2">
+
+        <Button
+            android:id="@+id/btn_pick_image"
+            style="@android:style/Widget.Material.Button.Borderless.Colored"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="56dp"
+            android:layout_marginEnd="8dp"
+            android:text="Change Image" />
+
+        <Button
+            android:id="@+id/btn_save_card"
+            style="@android:style/Widget.Material.Button.Colored"
+            android:layout_width="0dp"
+            android:layout_weight="1"
+            android:layout_height="56dp"
+            android:layout_marginStart="8dp"
+            android:text="Save Card" />
+    </LinearLayout>
 
 </LinearLayout>
