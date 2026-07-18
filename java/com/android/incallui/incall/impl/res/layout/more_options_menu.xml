@@ -1,0 +1,101 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+     SPDX-FileCopyrightText: 2026 The LineageOS Project
+     SPDX-License-Identifier: Apache-2.0
+-->
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:orientation="vertical"
+    android:paddingTop="24dp"
+    android:paddingBottom="48dp"
+    android:paddingHorizontal="16dp">
+
+    <!-- Header -->
+    <RelativeLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginBottom="24dp">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="@string/incall_label_more"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:textColor="?android:attr/textColorPrimary"
+            android:layout_centerVertical="true"
+            android:layout_alignParentStart="true"/>
+
+        <ImageView
+            android:id="@+id/menu_close"
+            android:layout_width="48dp"
+            android:layout_height="48dp"
+            android:padding="12dp"
+            android:src="@drawable/quantum_ic_close_vd_theme_24"
+            android:tint="?android:attr/textColorSecondary"
+            android:background="?android:attr/selectableItemBackgroundBorderless"
+            android:layout_alignParentEnd="true"/>
+    </RelativeLayout>
+
+    <!-- Add Call -->
+    <TextView
+        android:id="@+id/option_add_call"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/incall_label_add_call"
+        android:textColor="?android:attr/textColorPrimary"
+        android:drawableStart="@drawable/quantum_ic_add_call_vd_theme_24"
+        android:drawableTint="?android:attr/textColorPrimary"
+        android:drawablePadding="24dp"
+        android:paddingVertical="16dp"
+        android:paddingHorizontal="8dp"
+        android:textSize="16sp"
+        android:background="?android:attr/selectableItemBackground"/>
+
+    <!-- Hold -->
+    <TextView
+        android:id="@+id/option_hold"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/incall_label_hold"
+        android:textColor="?android:attr/textColorPrimary"
+        android:drawableStart="@drawable/quantum_ic_pause_vd_theme_24"
+        android:drawableTint="?android:attr/textColorPrimary"
+        android:drawablePadding="24dp"
+        android:paddingVertical="16dp"
+        android:paddingHorizontal="8dp"
+        android:textSize="16sp"
+        android:background="?android:attr/selectableItemBackground"/>
+
+    <!-- Record -->
+    <TextView
+        android:id="@+id/option_record"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/incall_label_record"
+        android:textColor="?android:attr/textColorPrimary"
+        android:drawableStart="@drawable/quantum_ic_record_white_36"
+        android:drawableTint="?android:attr/textColorPrimary"
+        android:drawablePadding="24dp"
+        android:paddingVertical="16dp"
+        android:paddingHorizontal="8dp"
+        android:textSize="16sp"
+        android:background="?android:attr/selectableItemBackground"/>
+
+    <!-- Video Call -->
+    <TextView
+        android:id="@+id/option_video_call"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="@string/incall_label_videocall"
+        android:textColor="?android:attr/textColorPrimary"
+        android:drawableStart="@drawable/quantum_ic_videocam_vd_theme_24"
+        android:drawableTint="?android:attr/textColorPrimary"
+        android:drawablePadding="24dp"
+        android:paddingVertical="16dp"
+        android:paddingHorizontal="8dp"
+        android:textSize="16sp"
+        android:background="?android:attr/selectableItemBackground"/>
+
+</LinearLayout>

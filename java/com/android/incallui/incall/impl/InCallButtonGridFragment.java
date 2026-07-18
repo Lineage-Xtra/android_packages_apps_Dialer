@@ -17,12 +17,16 @@
 
 package com.android.incallui.incall.impl;
 
+import android.content.Context;
 import android.os.Bundle;
 import android.util.ArraySet;
+import android.view.ContextThemeWrapper;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.FrameLayout;
 
+import androidx.activity.OnBackPressedCallback;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
 
@@ -37,11 +41,14 @@ import java.util.Set;
 /** Fragment for the in call buttons (mute, speaker, ect.). */
 public class InCallButtonGridFragment extends Fragment {
 
-  private static final int BUTTON_COUNT = 6;
-  private static final int BUTTONS_PER_ROW = 3;
+  // Updated to 4 buttons in a single row
+  private static final int BUTTON_COUNT = 4;
+  private static final int BUTTONS_PER_ROW = 4;
 
   private final CheckableLabeledButton[] buttons = new CheckableLabeledButton[BUTTON_COUNT];
   private OnButtonGridCreatedListener buttonGridListener;
+
+  private OnBackPressedCallback moreMenuBackCallback;
 
   public static Fragment newInstance() {
     return new InCallButtonGridFragment();
@@ -52,6 +59,14 @@ public class InCallButtonGridFragment extends Fragment {
     super.onCreate(bundle);
     buttonGridListener = FragmentUtils.getParent(this, OnButtonGridCreatedListener.class);
     Assert.isNotNull(buttonGridListener);
+
+    moreMenuBackCallback = new OnBackPressedCallback(false) {
+        @Override
+        public void handleOnBackPressed() {
+            hideMoreMenu();
+        }
+    };
+    requireActivity().getOnBackPressedDispatcher().addCallback(this, moreMenuBackCallback);
   }
 
   @Nullable
@@ -64,10 +79,130 @@ public class InCallButtonGridFragment extends Fragment {
     buttons[1] = ((CheckableLabeledButton) view.findViewById(R.id.incall_second_button));
     buttons[2] = ((CheckableLabeledButton) view.findViewById(R.id.incall_third_button));
     buttons[3] = ((CheckableLabeledButton) view.findViewById(R.id.incall_fourth_button));
-    buttons[4] = ((CheckableLabeledButton) view.findViewById(R.id.incall_fifth_button));
-    buttons[5] = ((CheckableLabeledButton) view.findViewById(R.id.incall_sixth_button));
+
+    buttons[3].setVisibility(View.INVISIBLE);
+
+    try {
+        for (int i = 0; i < buttons[3].getChildCount(); i++) {
+            View child = buttons[3].getChildAt(i);
+            if (child instanceof android.widget.ImageView) {
+                ((android.widget.ImageView) child).setImageResource(R.drawable.quantum_ic_more_vert_vd_theme_24);
+                break;
+            }
+        }
+    } catch (Exception e) {
+        e.printStackTrace();
+    }
+
+    // Hardcode the 4th button to trigger the custom animated menu
+    buttons[3].setOnClickListener(new View.OnClickListener() {
+        @Override
+        public void onClick(View v) {
+            showMoreMenu();
+        }
+    });
 
     return view;
+  }
+
+  private void showMoreMenu() {
+      FrameLayout container = getActivity().findViewById(R.id.more_options_container);
+      if (container == null) return;
+
+      if (container.getChildCount() == 0) {
+
+          Context themeContext = new ContextThemeWrapper(getContext(), android.R.style.Theme_DeviceDefault_DayNight);
+          View menu = LayoutInflater.from(themeContext).inflate(R.layout.more_options_menu, container, false);
+
+          menu.findViewById(R.id.menu_close).setOnClickListener(v -> hideMoreMenu());
+
+          menu.findViewById(R.id.option_add_call).setOnClickListener(v -> {
+              triggerButtonController(InCallButtonIds.BUTTON_ADD_CALL);
+              hideMoreMenu();
+          });
+
+          menu.findViewById(R.id.option_hold).setOnClickListener(v -> {
+              triggerButtonController(InCallButtonIds.BUTTON_HOLD);
+              hideMoreMenu();
+          });
+
+          menu.findViewById(R.id.option_record).setOnClickListener(v -> {
+              triggerButtonController(InCallButtonIds.BUTTON_RECORD_CALL);
+              hideMoreMenu();
+          });
+
+          menu.findViewById(R.id.option_video_call).setOnClickListener(v -> {
+              triggerButtonController(InCallButtonIds.BUTTON_UPGRADE_TO_VIDEO);
+              hideMoreMenu();
+          });
+
+          container.addView(menu);
+      }
+
+      updateMoreMenuStates();
+
+      container.setVisibility(View.VISIBLE);
+      container.setTranslationY(800f);
+      container.animate().translationY(0f).setDuration(250).start();
+
+      moreMenuBackCallback.setEnabled(true);
+  }
+
+  private void hideMoreMenu() {
+      FrameLayout container = getActivity().findViewById(R.id.more_options_container);
+      if (container != null && container.getVisibility() == View.VISIBLE) {
+          container.animate().translationY(container.getHeight()).setDuration(250).withEndAction(() -> {
+              container.setVisibility(View.GONE);
+              moreMenuBackCallback.setEnabled(false);
+          }).start();
+      }
+  }
+
+  private void updateMoreMenuStates() {
+      if (getActivity() == null) return;
+      FrameLayout container = getActivity().findViewById(R.id.more_options_container);
+
+      if (container != null && container.getChildCount() > 0) {
+          View menu = container.getChildAt(0);
+          updateMenuOptionState(menu.findViewById(R.id.option_add_call), InCallButtonIds.BUTTON_ADD_CALL);
+          updateMenuOptionState(menu.findViewById(R.id.option_hold), InCallButtonIds.BUTTON_HOLD);
+          updateMenuOptionState(menu.findViewById(R.id.option_record), InCallButtonIds.BUTTON_RECORD_CALL);
+          updateMenuOptionState(menu.findViewById(R.id.option_video_call), InCallButtonIds.BUTTON_UPGRADE_TO_VIDEO);
+      }
+  }
+
+  private void updateMenuOptionState(View optionView, @InCallButtonIds int buttonId) {
+      if (optionView == null || buttonGridListener == null) return;
+
+      ButtonController controller = buttonGridListener.getButtonController(buttonId);
+      if (controller != null) {
+          boolean isEnabled = controller.isEnabled() && controller.isAllowed();
+          optionView.setEnabled(isEnabled);
+          optionView.setAlpha(isEnabled ? 1.0f : 0.4f);
+      } else {
+          optionView.setEnabled(false);
+          optionView.setAlpha(0.4f);
+      }
+  }
+
+  /**
+   * Safe helper method to grab an existing AOSP dynamic button controller,
+   * cast it, and programmatically simulate a physical button press action.
+   */
+  private void triggerButtonController(@InCallButtonIds int buttonId) {
+    if (buttonGridListener != null) {
+      ButtonController controller = buttonGridListener.getButtonController(buttonId);
+      if (controller != null) {
+          // Create a dummy button, let the controller attach its listener to it,
+          // perform the click to trigger the native dialer action, and unbind.
+          CheckableLabeledButton dummyButton = new CheckableLabeledButton(getContext());
+          controller.setButton(dummyButton);
+          dummyButton.performClick();
+
+          // Clean up to prevent memory leaks or ghost states
+          controller.setButton(null);
+      }
+    }
   }
 
   @Override
@@ -113,14 +248,15 @@ public class InCallButtonGridFragment extends Fragment {
 
     if (buttonChooser == null) {
       buttonChooser =
-          ButtonChooserFactory.newButtonChooser(voiceNetworkType, false /* isWiFi */, phoneType);
+          ButtonChooserFactory.newButtonChooser(voiceNetworkType, false, phoneType);
     }
 
     int numVisibleButtons = getResources().getInteger(R.integer.incall_num_rows) * BUTTONS_PER_ROW;
     List<Integer> buttonsToPlace =
         buttonChooser.getButtonPlacement(numVisibleButtons, allowedButtons, disabledButtons);
 
-    for (int i = 0; i < BUTTON_COUNT; ++i) {
+    // Limit dynamic placement to the first 3 buttons. 4th is reserved for "More".
+    for (int i = 0; i < 3; ++i) {
       if (i >= buttonsToPlace.size()) {
         buttons[i].setVisibility(View.INVISIBLE);
         continue;
@@ -128,6 +264,14 @@ public class InCallButtonGridFragment extends Fragment {
       @InCallButtonIds int button = buttonsToPlace.get(i);
       buttonGridListener.getButtonController(button).setButton(buttons[i]);
     }
+
+    if (buttonsToPlace.size() > 0) {
+        buttons[3].setVisibility(View.VISIBLE);
+    } else {
+        buttons[3].setVisibility(View.INVISIBLE);
+    }
+
+    updateMoreMenuStates();
 
     return numVisibleButtons;
   }

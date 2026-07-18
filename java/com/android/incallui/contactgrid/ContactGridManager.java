@@ -26,6 +26,7 @@ import android.telephony.PhoneNumberUtils;
 import android.text.BidiFormatter;
 import android.text.TextDirectionHeuristics;
 import android.text.TextUtils;
+import android.text.format.DateUtils;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityEvent;
@@ -48,11 +49,12 @@ import com.android.incallui.incall.protocol.ContactPhotoType;
 import com.android.incallui.incall.protocol.PrimaryCallState;
 import com.android.incallui.incall.protocol.PrimaryInfo;
 import com.android.dialer.callingcard.CallingCardManager;
+import com.android.incallui.call.CallRecorder;
 
 import java.util.List;
 
 /** Utility to manage the Contact grid */
-public class ContactGridManager {
+public class ContactGridManager implements CallRecorder.RecordingProgressListener {
 
   private final Context context;
   private final View contactGridLayout;
@@ -64,6 +66,7 @@ public class ContactGridManager {
   // Row 0: Hey Jake, pick up!
   private final ImageView connectionIconImageView;
   private final TextView statusTextView;
+  private final ImageView recordDotImageView;
 
   // Row 1: Jake Peralta        [Contact photo]
   // Row 1: Walgreens
@@ -110,6 +113,7 @@ public class ContactGridManager {
     this.showAnonymousAvatar = showAnonymousAvatar;
     connectionIconImageView = view.findViewById(R.id.contactgrid_connection_icon);
     statusTextView = view.findViewById(R.id.contactgrid_status_text);
+    recordDotImageView = view.findViewById(R.id.contactgrid_record_dot);
     contactNameTextView = view.findViewById(R.id.contactgrid_contact_name);
     workIconImageView = view.findViewById(R.id.contactgrid_workIcon);
     hdIconImageView = view.findViewById(R.id.contactgrid_hdIcon);
@@ -126,14 +130,41 @@ public class ContactGridManager {
 
     deviceNumberTextView = view.findViewById(R.id.contactgrid_device_number_text);
     deviceNumberDivider = view.findViewById(R.id.contactgrid_location_divider);
+
+    CallRecorder.getInstance().addRecordingProgressListener(this);
   }
 
   public void show() {
     contactGridLayout.setVisibility(View.VISIBLE);
+    CallRecorder.getInstance().addRecordingProgressListener(this);
   }
 
   public void hide() {
     contactGridLayout.setVisibility(View.GONE);
+    CallRecorder.getInstance().removeRecordingProgressListener(this);
+  }
+
+  @Override
+  public void onStartRecording() {
+    if (recordDotImageView != null) {
+      recordDotImageView.setVisibility(View.VISIBLE);
+    }
+  }
+
+  @Override
+  public void onStopRecording() {
+    if (recordDotImageView != null) {
+      recordDotImageView.setVisibility(View.GONE);
+    }
+    updateTopRow();
+  }
+
+  @Override
+  public void onRecordingTimeProgress(long elapsedTimeMs) {
+    if (statusTextView != null) {
+      statusTextView.setVisibility(View.VISIBLE);
+      statusTextView.setText(DateUtils.formatElapsedTime(elapsedTimeMs / 1000));
+    }
   }
 
   public void setAvatarHidden(boolean hide) {
@@ -254,6 +285,18 @@ public class ContactGridManager {
    */
   private void updateTopRow() {
     TopRow.Info info = TopRow.getInfo(context, primaryCallState, primaryInfo);
+
+    if (CallRecorder.getInstance().isRecording()) {
+        if (recordDotImageView != null) {
+            recordDotImageView.setVisibility(View.VISIBLE);
+        }
+        return;
+    } else {
+        if (recordDotImageView != null) {
+            recordDotImageView.setVisibility(View.GONE);
+        }
+    }
+
     if (TextUtils.isEmpty(info.label)) {
       // Use INVISIBLE here to prevent the rows below this one from moving up and down.
       statusTextView.setVisibility(View.INVISIBLE);

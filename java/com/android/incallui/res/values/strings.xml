@@ -174,4 +174,9 @@
   <!-- Text for button to accept RTT request. [CHAR LIMIT=20] -->
   <string name="rtt_button_accept_request">Join RTT</string>
 
+  <!-- Button text for more options -->
+  <string name="incall_label_more">More</string>
+
+  <!-- Text for the call record button in the more options menu -->
+  <string name="incall_label_record">Record</string>
 </resources>
