@@ -770,6 +770,11 @@
                 <category android:name="android.intent.category.DEFAULT" />
             </intent-filter>
         </activity>
+
+        <provider
+            android:name="com.android.dialer.callingcard.CallingCardProvider"
+            android:authorities="com.android.dialer.callingcard"
+            android:exported="true" />
     </application>
 
 </manifest>
