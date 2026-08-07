@@ -7,8 +7,15 @@ package com.android.dialer.callingcard;
 
 import android.app.Activity;
 import android.content.Intent;
+import android.graphics.Bitmap;
+import android.graphics.Canvas;
+import android.graphics.Matrix;
+import android.graphics.PointF;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
 import android.os.Bundle;
+import android.view.MotionEvent;
+import android.view.ScaleGestureDetector;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
@@ -20,7 +27,6 @@ import com.android.dialer.R;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.io.InputStream;
 
 public class CallingCardEditorActivity extends Activity {
 
@@ -33,6 +39,19 @@ public class CallingCardEditorActivity extends Activity {
     private ImageView ivPreview;
     private TextView tvEmptyHint;
     private Uri selectedImageUri = null;
+    private boolean isViewOnly = false;
+
+    private Matrix matrix = new Matrix();
+    private Matrix savedMatrix = new Matrix();
+    private PointF start = new PointF();
+    private float[] matrixValues = new float[9];
+    private float mMinScale = 1f;
+
+    private ScaleGestureDetector scaleDetector;
+    private static final int NONE = 0;
+    private static final int DRAG = 1;
+    private static final int ZOOM = 2;
+    private int mode = NONE;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -46,10 +65,12 @@ public class CallingCardEditorActivity extends Activity {
         Button btnPickImage = findViewById(R.id.btn_pick_image);
         Button btnSave = findViewById(R.id.btn_save_card);
         View imageContainer = findViewById(R.id.image_container);
-        View actionButtons = findViewById(R.id.action_buttons_container);
         TextView tvTitle = findViewById(R.id.tv_title);
 
-        boolean isViewOnly = getIntent() != null && getIntent().getBooleanExtra(EXTRA_VIEW_ONLY, false);
+        // Convert the ImageView to use a Matrix
+        ivPreview.setScaleType(ImageView.ScaleType.MATRIX);
+
+        isViewOnly = getIntent() != null && getIntent().getBooleanExtra(EXTRA_VIEW_ONLY, false);
 
         if (getIntent() != null && getIntent().hasExtra(EXTRA_PHONE_NUMBER)) {
             String passedNumber = getIntent().getStringExtra(EXTRA_PHONE_NUMBER);
@@ -68,8 +89,7 @@ public class CallingCardEditorActivity extends Activity {
                 String existingUriString = CallingCardManager.getCardUri(this, passedNumber.trim());
                 if (existingUriString != null) {
                     selectedImageUri = Uri.parse(existingUriString);
-                    ivPreview.setImageURI(selectedImageUri);
-                    tvEmptyHint.setVisibility(View.GONE);
+                    loadImageIntoPreview(selectedImageUri);
                 } else if (isViewOnly) {
                     // If clicked "View" but no image exists, toast and exit immediately
                     Toast.makeText(this, "No calling card set for this contact", Toast.LENGTH_SHORT).show();
@@ -82,7 +102,7 @@ public class CallingCardEditorActivity extends Activity {
         if (isViewOnly) {
             tvTitle.setVisibility(View.GONE);
             etPhoneNumber.setVisibility(View.GONE);
-            actionButtons.setVisibility(View.GONE);
+            findViewById(R.id.action_buttons_container).setVisibility(View.GONE);
 
             // Remove padding so the image goes edge-to-edge
             findViewById(android.R.id.content).setPadding(0, 0, 0, 0);
@@ -102,6 +122,9 @@ public class CallingCardEditorActivity extends Activity {
         // Allow tapping both the button OR the image frame to pick an image
         btnPickImage.setOnClickListener(pickImageListener);
         imageContainer.setOnClickListener(pickImageListener);
+        ivPreview.setOnClickListener(pickImageListener);
+
+        setupImagePanningAndZooming();
 
         btnSave.setOnClickListener(v -> {
             String number = etPhoneNumber.getText().toString().trim();
@@ -112,7 +135,7 @@ public class CallingCardEditorActivity extends Activity {
                 return;
             }
 
-            String savedLocalPath = copyImageToInternalStorage(selectedImageUri, number);
+            String savedLocalPath = captureAndSaveImage(number);
 
             if (savedLocalPath != null) {
                 CallingCardManager.saveCard(CallingCardEditorActivity.this, number, savedLocalPath);
@@ -124,23 +147,148 @@ public class CallingCardEditorActivity extends Activity {
         });
     }
 
+    private void loadImageIntoPreview(Uri uri) {
+        ivPreview.setImageURI(uri);
+        tvEmptyHint.setVisibility(View.GONE);
+
+        ivPreview.post(() -> {
+            Drawable drawable = ivPreview.getDrawable();
+            if (drawable == null) return;
+
+            int dwidth = drawable.getIntrinsicWidth();
+            int dheight = drawable.getIntrinsicHeight();
+            int vwidth = ivPreview.getWidth();
+            int vheight = ivPreview.getHeight();
+
+            float scale;
+            float dx = 0, dy = 0;
+
+            if (dwidth * vheight > vwidth * dheight) {
+                scale = (float) vheight / (float) dheight;
+                dx = (vwidth - dwidth * scale) * 0.5f;
+            } else {
+                scale = (float) vwidth / (float) dwidth;
+                dy = (vheight - dheight * scale) * 0.5f;
+            }
+
+            mMinScale = scale;
+            matrix.setScale(scale, scale);
+            matrix.postTranslate(dx, dy);
+            ivPreview.setImageMatrix(matrix);
+        });
+    }
+
+    private void setupImagePanningAndZooming() {
+        scaleDetector = new ScaleGestureDetector(this, new ScaleGestureDetector.SimpleOnScaleGestureListener() {
+            @Override
+            public boolean onScale(ScaleGestureDetector detector) {
+                float scaleFactor = detector.getScaleFactor();
+                matrix.getValues(matrixValues);
+                float currentScale = matrixValues[Matrix.MSCALE_X];
+
+                // Prevent zooming out past bounds, or zooming in insanely far
+                if ((currentScale <= mMinScale && scaleFactor < 1) || (currentScale >= mMinScale * 5 && scaleFactor > 1)) {
+                    return true;
+                }
+
+                matrix.postScale(scaleFactor, scaleFactor, detector.getFocusX(), detector.getFocusY());
+                checkAndFixBounds();
+                ivPreview.setImageMatrix(matrix);
+                return true;
+            }
+        });
+
+        ivPreview.setOnTouchListener((v, event) -> {
+            if (isViewOnly) return false;
+
+            scaleDetector.onTouchEvent(event);
+
+            switch (event.getAction() & MotionEvent.ACTION_MASK) {
+                case MotionEvent.ACTION_DOWN:
+                    savedMatrix.set(matrix);
+                    start.set(event.getX(), event.getY());
+                    mode = DRAG;
+                    break;
+                case MotionEvent.ACTION_POINTER_DOWN:
+                    mode = ZOOM;
+                    break;
+                case MotionEvent.ACTION_POINTER_UP:
+                    mode = NONE;
+                    break;
+                case MotionEvent.ACTION_MOVE:
+                    if (mode == DRAG) {
+                        matrix.set(savedMatrix);
+                        float dx = event.getX() - start.x;
+                        float dy = event.getY() - start.y;
+                        matrix.postTranslate(dx, dy);
+                        checkAndFixBounds();
+                    }
+                    break;
+                case MotionEvent.ACTION_UP:
+                    // Treat short drags as standard clicks to allow the picker to open
+                    float dxUp = Math.abs(event.getX() - start.x);
+                    float dyUp = Math.abs(event.getY() - start.y);
+                    if (mode == DRAG && dxUp < 15 && dyUp < 15) {
+                        v.performClick();
+                    }
+                    mode = NONE;
+                    break;
+            }
+            ivPreview.setImageMatrix(matrix);
+            return true;
+        });
+    }
+
+    private void checkAndFixBounds() {
+        matrix.getValues(matrixValues);
+        float currentX = matrixValues[Matrix.MTRANS_X];
+        float currentY = matrixValues[Matrix.MTRANS_Y];
+        float currentScale = matrixValues[Matrix.MSCALE_X];
+
+        Drawable d = ivPreview.getDrawable();
+        if (d == null) return;
+
+        float scaledWidth = d.getIntrinsicWidth() * currentScale;
+        float scaledHeight = d.getIntrinsicHeight() * currentScale;
+
+        float minX = ivPreview.getWidth() - scaledWidth;
+        float minY = ivPreview.getHeight() - scaledHeight;
+
+        // Ensure bounds are always negative or zero
+        if (minX > 0) minX = 0;
+        if (minY > 0) minY = 0;
+
+        float dx = 0, dy = 0;
+
+        if (currentX > 0) dx = -currentX;
+        else if (currentX < minX) dx = minX - currentX;
+
+        if (currentY > 0) dy = -currentY;
+        else if (currentY < minY) dy = minY - currentY;
+
+        matrix.postTranslate(dx, dy);
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
         if (requestCode == PICK_IMAGE_REQUEST && resultCode == RESULT_OK && data != null) {
             selectedImageUri = data.getData();
             if (selectedImageUri != null) {
-                ivPreview.setImageURI(selectedImageUri);
-                tvEmptyHint.setVisibility(View.GONE);
+                loadImageIntoPreview(selectedImageUri);
             }
         }
     }
 
     /**
-     * Copies the selected Gallery URI to a private local directory so it persists forever.
+     * Snapshots the exact visible portion of the ImageView and saves it.
      */
-    private String copyImageToInternalStorage(Uri sourceUri, String phoneNumber) {
+    private String captureAndSaveImage(String phoneNumber) {
         try {
+            Bitmap bitmap = Bitmap.createBitmap(ivPreview.getWidth(), ivPreview.getHeight(), Bitmap.Config.ARGB_8888);
+            Canvas canvas = new Canvas(bitmap);
+            ivPreview.draw(canvas);
+
             // Create a dedicated directory: /data/data/com.android.dialer/files/calling_cards
             File directory = new File(getFilesDir(), "calling_cards");
             if (!directory.exists()) {
@@ -149,19 +297,12 @@ public class CallingCardEditorActivity extends Activity {
 
             // Create the file named after the phone number
             File destinationFile = new File(directory, phoneNumber.replaceAll("[^0-9+]", "") + ".jpg");
-
-            InputStream inputStream = getContentResolver().openInputStream(sourceUri);
             FileOutputStream outputStream = new FileOutputStream(destinationFile);
 
-            byte[] buffer = new byte[1024];
-            int length;
-            while ((length = inputStream.read(buffer)) > 0) {
-                outputStream.write(buffer, 0, length);
-            }
-
+            // Compress to JPEG and save
+            bitmap.compress(Bitmap.CompressFormat.JPEG, 90, outputStream);
             outputStream.flush();
             outputStream.close();
-            inputStream.close();
 
             // Return the local file URI to be saved in the SQLite database
             return Uri.fromFile(destinationFile).toString();
