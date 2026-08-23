@@ -17,6 +17,7 @@ import android.os.Bundle;
 import android.view.MotionEvent;
 import android.view.ScaleGestureDetector;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.ImageView;
@@ -72,6 +73,9 @@ public class CallingCardEditorActivity extends Activity {
 
         isViewOnly = getIntent() != null && getIntent().getBooleanExtra(EXTRA_VIEW_ONLY, false);
 
+        // Grab the root LinearLayout from the XML
+        View rootLayout = ((ViewGroup) findViewById(android.R.id.content)).getChildAt(0);
+
         if (getIntent() != null && getIntent().hasExtra(EXTRA_PHONE_NUMBER)) {
             String passedNumber = getIntent().getStringExtra(EXTRA_PHONE_NUMBER);
             if (passedNumber != null && !passedNumber.trim().isEmpty()) {
@@ -104,12 +108,26 @@ public class CallingCardEditorActivity extends Activity {
             etPhoneNumber.setVisibility(View.GONE);
             findViewById(R.id.action_buttons_container).setVisibility(View.GONE);
 
-            // Remove padding so the image goes edge-to-edge
-            findViewById(android.R.id.content).setPadding(0, 0, 0, 0);
+            // Strip the XML padding
+            rootLayout.setPadding(0, 0, 0, 0);
 
             // Allow tapping the image to close the viewer
             ivPreview.setOnClickListener(v -> finish());
             return;
+        } else {
+            // Dynamically add the status bar and nav bar heights
+            rootLayout.setOnApplyWindowInsetsListener((v, insets) -> {
+                android.graphics.Insets bars = insets.getInsets(android.view.WindowInsets.Type.systemBars());
+                int basePadding = (int) (24 * getResources().getDisplayMetrics().density);
+                v.setPadding(
+                    basePadding + bars.left,
+                    basePadding + bars.top,
+                    basePadding + bars.right,
+                    basePadding + bars.bottom
+                );
+                return insets;
+            });
+            rootLayout.requestApplyInsets();
         }
 
         View.OnClickListener pickImageListener = v -> {
