@@ -241,10 +241,14 @@ public class InCallActivity extends TransactionSafeFragmentActivity
 
     inCallOrientationEventListener = new InCallOrientationEventListener(this);
 
+    // Enforce edge-to-edge layout for both incoming and outgoing calls
+    getWindow().setNavigationBarColor(android.graphics.Color.TRANSPARENT);
     getWindow()
         .getDecorView()
         .setSystemUiVisibility(
-            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+            View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+                | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+                | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
 
     pseudoBlackScreenOverlay = findViewById(R.id.psuedo_black_screen_overlay);
     sendBroadcast(CallPendingActivity.getFinishBroadcast());

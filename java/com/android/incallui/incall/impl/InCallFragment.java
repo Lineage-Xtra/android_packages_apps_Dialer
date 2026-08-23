@@ -209,25 +209,18 @@ public class InCallFragment extends Fragment
     // TODO(a bug): Change to use corresponding phone type used for current call.
     phoneType = getContext().getSystemService(TelephonyManager.class).getPhoneType();
 
-    // Workaround to adjust padding for status bar and navigation bar since fitsSystemWindows
-    // doesn't work well when switching with other fragments.
-    view.addOnAttachStateChangeListener(
-        new OnAttachStateChangeListener() {
-          @Override
-          public void onViewAttachedToWindow(View v) {
-            View container = v.findViewById(R.id.incall_ui_container);
-            Insets insets = v.getRootWindowInsets().getInsets(WindowInsets.Type.systemBars());
-            int topInset = insets.top;
-            int bottomInset = insets.bottom;
-            if (topInset != container.getPaddingTop()) {
-              TransitionManager.beginDelayedTransition(((ViewGroup) container.getParent()));
-              container.setPadding(0, topInset, 0, bottomInset);
-            }
-          }
+    // Dynamically adjust padding for status bar and navigation bar.
+    View container = view.findViewById(R.id.incall_ui_container);
+    if (container != null) {
+      container.setOnApplyWindowInsetsListener((v, insets) -> {
+        Insets bars = insets.getInsets(WindowInsets.Type.systemBars());
+        v.setPadding(0, bars.top, 0, bars.bottom);
+        return insets;
+      });
+      // Force an immediate inset pass
+      container.requestApplyInsets();
+    }
 
-          @Override
-          public void onViewDetachedFromWindow(View v) {}
-        });
     return view;
   }
 
